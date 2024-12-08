@@ -48,6 +48,8 @@ class ChewieState extends State<Chewie> {
   @override
   void initState() {
     super.initState();
+    _isFullScreen = isControllerFullScreen;
+    widget.controller.removeListener(listener);
     widget.controller.addListener(listener);
     notifier = PlayerNotifier.init();
   }
@@ -62,11 +64,13 @@ class ChewieState extends State<Chewie> {
   @override
   void didUpdateWidget(Chewie oldWidget) {
     if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(listener);
+      widget.controller.removeListener(listener);
       widget.controller.addListener(listener);
     }
     super.didUpdateWidget(oldWidget);
     if (_isFullScreen != isControllerFullScreen) {
-      widget.controller._isFullScreen = _isFullScreen;
+      _isFullScreen = isControllerFullScreen;
     }
   }
 
@@ -74,11 +78,13 @@ class ChewieState extends State<Chewie> {
     if (isControllerFullScreen && !_isFullScreen) {
       _isFullScreen = isControllerFullScreen;
       await _pushFullScreenWidget(context);
-    } else if (_isFullScreen) {
-      Navigator.of(
-        context,
-        rootNavigator: widget.controller.useRootNavigator,
-      ).pop();
+    } else if (!isControllerFullScreen && _isFullScreen) {
+      if (Navigator.canPop(context)) {
+        Navigator.of(
+          context,
+          rootNavigator: widget.controller.useRootNavigator,
+        ).pop();
+      }
       _isFullScreen = false;
     }
   }
@@ -307,6 +313,7 @@ class ChewieController extends ChangeNotifier {
     this.progressIndicatorDelay,
     this.hideControlsTimer = defaultHideControlsTimer,
     this.controlsSafeAreaMinimum = EdgeInsets.zero,
+    this.isFullScreen = false,
   }) : assert(
           playbackSpeeds.every((speed) => speed > 0),
           'The playbackSpeeds values must all be greater than 0',
@@ -417,6 +424,7 @@ class ChewieController extends ChangeNotifier {
       hideControlsTimer: hideControlsTimer ?? this.hideControlsTimer,
       progressIndicatorDelay:
           progressIndicatorDelay ?? this.progressIndicatorDelay,
+      isFullScreen: isFullScreen ?? this.isFullScreen,
     );
   }
 
@@ -582,9 +590,7 @@ class ChewieController extends ChangeNotifier {
     return chewieControllerProvider.controller;
   }
 
-  bool _isFullScreen = false;
-
-  bool get isFullScreen => _isFullScreen;
+  bool isFullScreen = false;
 
   bool get isPlaying => videoPlayerController.value.isPlaying;
 
@@ -614,24 +620,28 @@ class ChewieController extends ChangeNotifier {
   }
 
   Future<void> _fullScreenListener() async {
-    if (videoPlayerController.value.isPlaying && !_isFullScreen) {
+    if (videoPlayerController.value.isPlaying && !isFullScreen) {
       enterFullScreen();
       videoPlayerController.removeListener(_fullScreenListener);
     }
   }
 
   void enterFullScreen() {
-    _isFullScreen = true;
-    notifyListeners();
+    if (!isFullScreen) {
+      isFullScreen = true;
+      notifyListeners();
+    }
   }
 
   void exitFullScreen() {
-    _isFullScreen = false;
-    notifyListeners();
+    if (isFullScreen) {
+      isFullScreen = false;
+      notifyListeners();
+    }
   }
 
   void toggleFullScreen() {
-    _isFullScreen = !_isFullScreen;
+    isFullScreen = !isFullScreen;
     notifyListeners();
   }
 
