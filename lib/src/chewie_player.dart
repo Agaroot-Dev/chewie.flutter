@@ -49,7 +49,6 @@ class ChewieState extends State<Chewie> {
   void initState() {
     super.initState();
     _isFullScreen = isControllerFullScreen;
-    widget.controller.removeListener(listener);
     widget.controller.addListener(listener);
     notifier = PlayerNotifier.init();
   }
@@ -70,7 +69,7 @@ class ChewieState extends State<Chewie> {
     }
     super.didUpdateWidget(oldWidget);
     if (_isFullScreen != isControllerFullScreen) {
-      _isFullScreen = isControllerFullScreen;
+      widget.controller.isFullScreen = _isFullScreen;
     }
   }
 
@@ -78,7 +77,7 @@ class ChewieState extends State<Chewie> {
     if (isControllerFullScreen && !_isFullScreen) {
       _isFullScreen = isControllerFullScreen;
       await _pushFullScreenWidget(context);
-    } else if (!isControllerFullScreen && _isFullScreen) {
+    } else if (_isFullScreen) {
       if (Navigator.canPop(context)) {
         Navigator.of(
           context,
@@ -370,6 +369,7 @@ class ChewieController extends ChangeNotifier {
       Animation<double>,
       ChewieControllerProvider,
     )? routePageBuilder,
+    bool? isFullScreen,
   }) {
     return ChewieController(
       draggableProgressBar: draggableProgressBar ?? this.draggableProgressBar,
@@ -627,17 +627,13 @@ class ChewieController extends ChangeNotifier {
   }
 
   void enterFullScreen() {
-    if (!isFullScreen) {
-      isFullScreen = true;
-      notifyListeners();
-    }
+    isFullScreen = true;
+    notifyListeners();
   }
 
   void exitFullScreen() {
-    if (isFullScreen) {
-      isFullScreen = false;
-      notifyListeners();
-    }
+    isFullScreen = false;
+    notifyListeners();
   }
 
   void toggleFullScreen() {
